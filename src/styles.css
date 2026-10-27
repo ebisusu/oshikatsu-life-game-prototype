@@ -21,4 +21,7 @@
  .hand-cards .button,.game-card .button{font-size:10px}
  .hand-cards .card-tags,.card-tags{font-size:9px}
  .deck-editor{scroll-margin-top:10px}
+ .status-strip .fan-status{display:flex;grid-column:1/-1;align-items:center;justify-content:space-between;gap:10px;border-left:0;border-top:1px solid var(--border);padding:7px 11px;background:#252036}
+ .status-strip .fan-status small{font-size:9px}
+ .status-strip .fan-status b{font-size:11px;padding:0}
 }

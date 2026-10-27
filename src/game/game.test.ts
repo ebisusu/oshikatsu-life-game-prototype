@@ -33,6 +33,20 @@ describe('world rules and invariants',()=>{
  it('purchases one fictional asset per city with recurring weekly income',()=>{let s=step(createGame(),{type:'buy'});expect(s.money).toBe(32000);expect(s.assets).toEqual(['tokyo']);expect(act(s,{type:'buy'}).state).toBe(s);s=step(s,{type:'week'});expect(s.money).toBe(35000);expect(s.trophies).toContain('owner');});
  it('allows a broke exhausted fan to finish all 12 weeks through rescue streams',()=>{let s=createGame();s.money=0;s.stamina=0;s.ap=0;for(let w=1;w<=12;w++){expect(s.week).toBe(w);if(liveDue(s)){s.money=0;s.stamina=0;s=step(s,{type:'startLive',mode:'stream'});expect(s.live!.subsidized).toBe(true);for(let p=0;p<8;p++)s=step(s,{type:'phase'});s=step(s,{type:'claim'});expect(s.stats.lives).toBe(Math.floor(w/4));}s=step(s,{type:'week'});}expect(s.status).toBe('finished');expect(s.week).toBe(12);expect(s.ap).toBe(0);expect(s.trophies).toContain('finish');expect(act(s,{type:'week'}).state).toBe(s);});
  it('requires a concert resolution before advancing and permits explicit skip',()=>{let s=createGame();s.week=4;expect(act(s,{type:'week'}).state).toBe(s);s=step(s,{type:'skip'});s=step(s,{type:'week'});expect(s.week).toBe(5);});
+ it('earns eight distinct trophies in an ordinary 12-week sequence of legal actions',()=>{
+  let s=createGame();
+  for(let week=1;week<=12;week++){
+   if(week===1){s=step(s,{type:'work'});s=step(s,{type:'work'});}
+   if(week===2){s=step(s,{type:'work'});s=step(s,{type:'train',metric:'heat'});s=step(s,{type:'train',metric:'unity'});}
+   if(week===3)s=step(s,{type:'train',metric:'memory'});
+   if(week===3||week===4)for(let i=0;i<3;i++){s=step(s,{type:'explore',spot:'tokyo-gallery'});s=step(s,{type:'choose',card:s.pending!.cards[0]});}
+   if(week===5){s=step(s,{type:'rest'});s=step(s,{type:'move',city:'yokohama'});s=step(s,{type:'move',city:'tokyo'});}
+   if(week===6){s=step(s,{type:'move',city:'nagoya'});s=step(s,{type:'buy'});}
+   if(liveDue(s)){s=step(s,{type:'startLive',mode:'stream'});s.live=complete(s.live!);s=step(s,{type:'claim'});}
+   s=step(s,{type:'week'});
+  }
+  for(const trophy of ['first','collector','traveler','worker','training','debut','owner','finish'])expect(s.trophies).toContain(trophy);
+ });
  it('awards rewards only once, tracks trophies, and exposes the next concert after an old result',()=>{let s=createGame();s.week=4;s=step(s,{type:'startLive',mode:'stream'});s.live=complete(s.live!);s=step(s,{type:'claim'});const money=s.money;expect(s.stats.lives).toBe(1);expect(s.stats.obtained).toBe(1);expect(s.trophies).toContain('debut');expect(act(s,{type:'claim'}).state).toBe(s);expect(s.money).toBe(money);for(let i=0;i<4;i++)s=step(s,{type:'week'});expect(s.week).toBe(8);expect(actionError(s,{type:'startLive',mode:'stream'})).toBeUndefined();s=step(s,{type:'startLive',mode:'stream'});expect(s.live!.week).toBe(8);});
 });
 

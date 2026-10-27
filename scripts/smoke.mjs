@@ -7,12 +7,11 @@ const check=async(condition,message)=>{if(!condition)throw new Error(message);};
 const nav=async name=>page.getByRole('navigation').getByRole('button',{name,exact:true}).click();
 const noOverflow=async()=>check(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),'Horizontal overflow');
 try{
- await page.goto('http://127.0.0.1:5173');
+ await page.goto(process.env.SMOKE_URL || 'http://127.0.0.1:5173/');
  await page.getByRole('button',{name:'12週間の旅をはじめる'}).click();
  await nav('全国マップ');await page.getByRole('button',{name:'このスポットを訪問する'}).first().click();
  await page.getByRole('button',{name:'このカードを獲得'}).first().click();
  await page.locator('.city-list').getByRole('button',{name:'横浜'}).click();
- console.log('TRAVEL DEBUG',await page.locator('body').innerText().then(t=>t.slice(0,1200)));
  await page.getByRole('button',{name:/横浜へ移動/}).click();
  await nav('デッキ');await page.getByRole('button',{name:'自動調整',exact:true}).click();await page.getByRole('button',{name:'20枚の編成を保存'}).click();await noOverflow();
  await nav('ホーム');
