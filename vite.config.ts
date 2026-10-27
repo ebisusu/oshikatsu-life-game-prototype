@@ -1,3 +1,14 @@
-import { defineConfig } from 'vitest/config';
+/// <reference types="vitest" />
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-export default defineConfig({ plugins: [react()], base: './', test: { include: ['src/**/*.test.ts'] } });
+
+// base './' : GitHub Pages など任意のサブパスへ置いても動く静的ビルド
+export default defineConfig({
+  base: './',
+  plugins: [react()],
+  build: { outDir: 'dist', sourcemap: false },
+  test: {
+    environment: 'node',
+    include: ['tests/**/*.test.ts'],
+  },
+});

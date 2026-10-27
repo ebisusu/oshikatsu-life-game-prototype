@@ -1,0 +1,30 @@
+// スクリーンショット生成（READMEの確認用）。事前に npm run build && npm run preview を起動しておく。
+import { chromium } from '@playwright/test';
+const out = 'docs/screenshots';
+const browser = await chromium.launch({ channel: process.env.PW_CHANNEL ?? 'msedge' });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const page = await ctx.newPage();
+await page.goto('http://127.0.0.1:4173/');
+await page.screenshot({ path: `${out}/01-setup.png` });
+await page.getByTestId('oshi-combo').click();
+await page.getByText('詳細設定').click();
+await page.getByTestId('seed-input').fill('shots');
+await page.getByTestId('start-game').click();
+await page.getByTestId('tutorial-skip').click();
+await page.screenshot({ path: `${out}/02-home.png` });
+await page.getByTestId('tab-map').click();
+await page.screenshot({ path: `${out}/03-map.png`, fullPage: false });
+await page.locator('[data-testid^="explore-"]:not([disabled])').first().click();
+await page.screenshot({ path: `${out}/04-choice.png` });
+await page.getByTestId('choice-card').first().click();
+await page.getByTestId('tab-deck').click();
+await page.screenshot({ path: `${out}/05-deck.png` });
+for (let i = 0; i < 3; i++) { await page.getByTestId('tab-home').click(); await page.getByTestId('end-week').click(); }
+await page.getByTestId('tab-live').click();
+await page.screenshot({ path: `${out}/06-live-join.png` });
+await page.getByTestId('join-stream').click();
+await page.getByTestId('hand-0').click();
+await page.screenshot({ path: `${out}/07-battle.png` });
+await page.getByTestId('play-card').click();
+await page.screenshot({ path: `${out}/08-battle-played.png` });
+await browser.close();

@@ -1,12 +1,5 @@
-node_modules/
-dist/
-*.tsbuildinfo
-playwright-report/
-test-results/
-.vite/
-.cache/
-
-IMPLEMENTATION_BRIEF.md
-_click.ps1
-_view_claude.ps1
-claude-window.png
+node_modules
+dist
+test-results
+playwright-report
+*.log
