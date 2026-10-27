@@ -40,7 +40,7 @@ test('audit: malformed structured LIVE save falls back without a React crash', a
   page.on('pageerror', e => errors.push(e.message));
   await start(page);
   await page.getByTestId('tutorial-skip').click();
-  for (let i = 0; i < 3; i++) await page.getByTestId('end-week').click();
+  for (let i = 0; i < 3; i++) { await page.getByTestId('end-week').click(); await page.getByTestId('week-intro-start').click(); }
   await page.getByTestId('tab-live').click();
   await page.getByTestId('join-free').click();
   await expect(page.getByTestId('battle')).toBeVisible();
@@ -118,7 +118,7 @@ test('audit: production build runs at a GitHub Pages style subpath on a plain st
     await page.goto(`http://127.0.0.1:${address.port}${prefix}`);
     await page.getByTestId('start-game').click();
     await page.getByTestId('tutorial-skip').click();
-    for (let i = 0; i < 3; i++) await page.getByTestId('end-week').click();
+    for (let i = 0; i < 3; i++) { await page.getByTestId('end-week').click(); await page.getByTestId('week-intro-start').click(); }
     await page.getByTestId('tab-live').click();
     await page.getByTestId('join-free').click();
     await expect(page.getByTestId('battle')).toBeVisible();
@@ -161,7 +161,7 @@ test('audit: an explored reward can be equipped, saved, reloaded and brought to 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('oshikatsu-jinsei-game:save')!).state);
   expect(saved.deck.filter((id: string) => id === reward).length).toBe(oldCount + 1);
   expect(saved.collection[reward]).toBe((before.collection[reward] ?? 0) + 1);
-  for (let i = 0; i < 3; i++) await page.getByTestId('end-week').click();
+  for (let i = 0; i < 3; i++) { await page.getByTestId('end-week').click(); await page.getByTestId('week-intro-start').click(); }
   await page.getByTestId('tab-live').click();
   await page.getByTestId('join-free').click();
   const zones = await page.evaluate(() => {

@@ -19,7 +19,7 @@ await page.screenshot({ path: `${out}/04-choice.png` });
 await page.getByTestId('choice-card').first().click();
 await page.getByTestId('tab-deck').click();
 await page.screenshot({ path: `${out}/05-deck.png` });
-for (let i = 0; i < 3; i++) { await page.getByTestId('tab-home').click(); await page.getByTestId('end-week').click(); }
+for (let i = 0; i < 3; i++) { await page.getByTestId('tab-home').click(); await page.getByTestId('end-week').click(); await page.getByTestId('week-intro-start').click(); }
 await page.getByTestId('tab-live').click();
 await page.screenshot({ path: `${out}/06-live-join.png` });
 await page.getByTestId('join-stream').click();

@@ -73,7 +73,7 @@ export function DeckScreen({ s, dispatch }: { s: GameState; dispatch: Dispatch }
       <section className="panel">
         <div className="row between">
           <h2>デッキ編成 <span className={draft.length === DECK_SIZE ? 'ok-text' : 'ng-text'} data-testid="deck-count">{draft.length}/{DECK_SIZE}</span></h2>
-          <span className="muted small">SR {rc.SR}/6 ・ SSR {rc.SSR}/2 ・ UR {rc.UR}/1 ・ 同名{COPY_LIMIT}枚まで</span>
+          <span className="muted small deck-head-limits">SR {rc.SR}/6 ・ SSR {rc.SSR}/2 ・ UR {rc.UR}/1 ・ 同名{COPY_LIMIT}枚まで</span>
         </div>
         {errors.length > 0 && <ul className="errors" data-testid="deck-errors">{errors.map((e) => <li key={e}>⚠ {e}</li>)}</ul>}
         {errors.length === 0 && <p className="ok-text small">✓ 合法なデッキです{dirty ? '（未保存）' : '（保存済み）'}</p>}

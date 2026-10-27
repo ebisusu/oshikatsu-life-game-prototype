@@ -95,15 +95,18 @@ export function CardTile(p: CardTileProps) {
   );
 }
 
-export function Modal(props: { title?: string; children: ReactNode; onClose?: () => void; testId?: string; wide?: boolean }) {
+export function Modal(props: { title?: string; children: ReactNode; onClose?: () => void; onEscape?: () => void; testId?: string; wide?: boolean; className?: string; labelledBy?: string }) {
   const dialog = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const escape = useRef(props.onEscape);
+  escape.current = props.onEscape;
   useEffect(() => {
     const root = dialog.current!;
     const previous = document.activeElement;
     const controls = () => Array.from(root.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')).filter(el => el.getClientRects().length > 0);
     (controls()[0] ?? root).focus();
     const trap = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && escape.current) { event.preventDefault(); escape.current(); return; }
       if (event.key !== 'Tab') return;
       const all = controls();
       const first = all[0] ?? root;
@@ -120,8 +123,8 @@ export function Modal(props: { title?: string; children: ReactNode; onClose?: ()
     };
   }, []);
   return (
-    <div ref={dialog} className="modal-back" role="dialog" aria-modal="true" aria-labelledby={props.title ? titleId : undefined} tabIndex={-1} data-testid={props.testId}>
-      <div className={`modal${props.wide ? ' wide' : ''}`}>
+    <div ref={dialog} className="modal-back" role="dialog" aria-modal="true" aria-labelledby={props.labelledBy ?? (props.title ? titleId : undefined)} tabIndex={-1} data-testid={props.testId}>
+      <div className={`modal${props.wide ? ' wide' : ''}${props.className ? ` ${props.className}` : ''}`}>
         {props.title && <h2 id={titleId}>{props.title}</h2>}
         {props.children}
         {props.onClose && <button type="button" className="btn ghost" onClick={props.onClose}>閉じる</button>}

@@ -134,6 +134,14 @@ test('スマホ幅で12週を完走できる', async ({ page }, info) => {
     await page.getByTestId('end-week').click();
     const confirm = page.getByTestId('confirm-end-yes');
     if (await confirm.isVisible().catch(() => false)) await confirm.click();
+    // 週開始アイキャッチ（最終週の終了時は出ない）
+    if (week < 12) {
+      await expect(page.getByTestId('week-intro')).toBeVisible();
+      await page.getByTestId('week-intro-start').click();
+      await expect(page.getByTestId('week-intro')).toBeHidden();
+    } else {
+      await expect(page.getByTestId('week-intro')).toHaveCount(0);
+    }
     await pickIfChoice(page);
   }
 

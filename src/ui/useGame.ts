@@ -3,6 +3,7 @@ import {
   applyAction, clearSave, loadGame, newGame, parseSave, SAVE_KEY, saveGame,
   type Action, type GameState, type NewGameOpts, type StorageLike,
 } from '../game';
+import { weekIntroData, type WeekIntroData } from './weekTransition';
 
 function getStorage(): StorageLike | null {
   try { return typeof window !== 'undefined' ? window.localStorage : null; } catch { return null; }
@@ -17,6 +18,8 @@ export function useGame() {
   const [state, setState] = useState<GameState | null>(boot.loaded.status === 'ok' ? boot.loaded.state : null);
   const [notice, setNotice] = useState<string | null>(boot.loaded.status === 'invalid' ? boot.loaded.reason : null);
   const [toast, setToast] = useState<Toast | null>(null);
+  // 週開始アイキャッチ。endWeek を実行したこのタブの操作でだけ立てる（保存データには含めない）。
+  const [weekIntro, setWeekIntro] = useState<WeekIntroData | null>(null);
   const ref = useRef<GameState | null>(state);
   const savedRaw = useRef(boot.raw);
   const timer = useRef<number | undefined>(undefined);
@@ -33,6 +36,7 @@ export function useGame() {
     const raw = readRaw();
     if (raw === undefined || raw === savedRaw.current) return false;
     savedRaw.current = raw;
+    setWeekIntro(null);
     const loaded = parseSave(raw);
     setNotice(loaded.status === 'invalid' ? loaded.reason : null);
     commit(loaded.status === 'ok' ? loaded.state : null);
@@ -60,11 +64,13 @@ export function useGame() {
     const r = applyAction(cur, a);
     if (!r.ok) { showToast(r.reason, 'err'); return false; }
     persist(r.state);
+    if (a.type === 'endWeek') setWeekIntro(weekIntroData(cur, r.state));
     return true;
   }, [persist, showToast, syncStorage]);
   const start = useCallback((opts: NewGameOpts): boolean => {
     if (syncStorage()) return false;
     setNotice(null);
+    setWeekIntro(null);
     persist(newGame(opts));
     return true;
   }, [persist, syncStorage]);
@@ -72,8 +78,10 @@ export function useGame() {
     clearSave(getStorage());
     savedRaw.current = readRaw();
     setNotice(null);
+    setWeekIntro(null);
     commit(null);
   }, [commit]);
-  return { state, dispatch, start, reset, toast, notice, dismissNotice: () => setNotice(null), showToast };
+  const dismissWeekIntro = useCallback(() => setWeekIntro(null), []);
+  return { state, dispatch, start, reset, toast, notice, dismissNotice: () => setNotice(null), showToast, weekIntro, dismissWeekIntro };
 }
 export type Dispatch = (a: Action) => boolean;

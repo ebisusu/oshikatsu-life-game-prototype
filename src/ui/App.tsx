@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { CITY_MAP, currentConcert, OSHI_MAP, TOTAL_WEEKS, yen, AP_PER_WEEK, MAX_STAMINA } from '../game';
 import { Collection, DeckScreen } from './Cards';
 import { Home } from './Home';
@@ -8,6 +8,7 @@ import { ChoiceModal, Help, Trophies, Tutorial } from './Misc';
 import { Setup } from './Setup';
 import { useGame } from './useGame';
 import { Bar } from './common';
+import { WeekIntro } from './WeekIntro';
 
 export type Tab = 'home' | 'map' | 'collection' | 'deck' | 'live' | 'trophy' | 'help';
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -25,13 +26,28 @@ const readSeen = (): boolean => { try { return window.localStorage.getItem(TUTOR
 const writeSeen = () => { try { window.localStorage.setItem(TUTORIAL_KEY, '1'); } catch { /* ignore */ } };
 
 export function App() {
-  const { state: s, dispatch, start, reset, toast, notice, dismissNotice, showToast } = useGame();
+  const { state: s, dispatch, start, reset, toast, notice, dismissNotice, showToast, weekIntro, dismissWeekIntro } = useGame();
+  const statusRef = useRef<HTMLElement>(null);
+  const tabsRef = useRef<HTMLElement>(null);
   const [tab, setTab] = useState<Tab>('home');
   const [tutorial, setTutorial] = useState(false);
 
   // ライブ開始時は自動でライブ画面へ
   const liveActive = !!s?.live;
   useEffect(() => { if (liveActive) setTab('live'); }, [liveActive]);
+
+  // 固定/追従バーの実高さをCSS変数へ（文字拡大でバーが折り返しても本文・追従要素と重ならないように）
+  const hasGame = !!s;
+  useEffect(() => {
+    const root = document.documentElement;
+    const targets: [HTMLElement | null, string][] = [[statusRef.current, '--status-h'], [tabsRef.current, '--tabs-h']];
+    const measure = () => { for (const [el, name] of targets) if (el) root.style.setProperty(name, `${Math.ceil(el.getBoundingClientRect().height)}px`); };
+    measure();
+    if (typeof ResizeObserver === 'undefined') { window.addEventListener('resize', measure); return () => window.removeEventListener('resize', measure); }
+    const ro = new ResizeObserver(measure);
+    for (const [el] of targets) if (el) ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasGame]);
 
   if (!s) {
     return (
@@ -52,7 +68,7 @@ export function App() {
 
   return (
     <div className="app">
-      <header className="status" data-testid="status-bar">
+      <header className="status" data-testid="status-bar" ref={statusRef}>
         <div className="st-row">
           <span className="st-week" data-testid="st-week">第{s.week}<small>/{TOTAL_WEEKS}週</small></span>
           <span className="st-ap" data-testid="st-ap" aria-label={`AP ${s.ap}/${AP_PER_WEEK}`}>
@@ -78,7 +94,7 @@ export function App() {
         {tab === 'help' && <Help s={s} onReset={() => { reset(); setTab('home'); }} onTutorial={() => setTutorial(true)} toast={showToast} />}
       </div>
 
-      <nav className="tabs" aria-label="メインメニュー">
+      <nav className="tabs" aria-label="メインメニュー" ref={tabsRef}>
         {TABS.map((t) => (
           <button key={t.id} type="button" className={`tab${tab === t.id ? ' on' : ''}`} onClick={() => setTab(t.id)}
             aria-current={tab === t.id ? 'page' : undefined} data-testid={`tab-${t.id}`}>
@@ -92,6 +108,7 @@ export function App() {
 
       <ChoiceModal s={s} dispatch={dispatch} />
       {tutorial && <Tutorial onClose={closeTutorial} />}
+      {weekIntro && !tutorial && !s.pending && !s.finished && <WeekIntro data={weekIntro} onClose={dismissWeekIntro} />}
       <ToastView toast={toast} />
     </div>
   );
