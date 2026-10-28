@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import {
-  blockReason, CONCERTS, currentConcert, finalSummary, METERS, METER_LABEL, OSHI_MAP, TOTAL_WEEKS, TRAIN_MAX,
-  trainCost, WORK_INCOME, yen, TROPHIES,
+  blockReason, CITIES, CONCERTS, currentConcert, finalSummary, METERS, METER_LABEL, OSHI_MAP, TOTAL_WEEKS, TRAIN_MAX,
+  trainCost, WORK_INCOME, WORK_AP, WORK_STAMINA, REST_AP, REST_STAMINA, TRAIN_AP, TRAIN_STAMINA, yen, TROPHIES,
   type GameState, type Meter,
 } from '../game';
-import { ActionButton, Modal } from './common';
+import { ActionTile, Modal } from './common';
+import { HomeScene, JourneyTrack } from './art';
+import { FxLayer, useDeltaFx } from './fx';
+import { Icon } from './icons';
 import type { Dispatch } from './useGame';
 import type { Tab } from './App';
 import { buildFeedback, copyText } from './feedback';
@@ -12,6 +15,7 @@ import { buildFeedback, copyText } from './feedback';
 export function Home(props: { s: GameState; dispatch: Dispatch; go: (t: Tab) => void; onReset: () => void; toast: (t: string, k: 'err' | 'ok') => void }) {
   const { s, dispatch } = props;
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const { run, items, seq } = useDeltaFx(s, dispatch);
   const concert = currentConcert(s);
   const livePending = !!concert && s.concerts[concert.id]?.status === 'pending';
   const nextConcert = CONCERTS.find((c) => c.week >= s.week && s.concerts[c.id]?.status === 'pending');
@@ -24,47 +28,77 @@ export function Home(props: { s: GameState; dispatch: Dispatch; go: (t: Tab) => 
   };
 
   return (
-    <div className="screen">
-      <section className="panel week-panel">
-        <div className="row between">
-          <h2>第{s.week}週 / {TOTAL_WEEKS}</h2>
-          <span className="chip type">{OSHI_MAP[s.oshi].name}{s.oshiMember ? `（メンバー${s.oshiMember}）` : ''}</span>
-        </div>
-        {livePending && concert ? (
-          <div className="live-banner" data-testid="live-banner">
-            <b>🎤 今週は「{concert.name}」開催週！</b>
-            <span>会場：{concert.venue}（{concert.city === s.city ? 'いまここ' : '別の都市'}）。参加はライブ画面から。</span>
-            <button type="button" className="btn pink" onClick={() => props.go('live')} data-testid="go-live">ライブ画面へ</button>
+    <div className="screen home">
+      <FxLayer items={items} seq={seq} />
+      <section className="panel week-panel poster">
+        <HomeScene live={livePending} />
+        <div className="poster-body">
+          <div className="row between poster-head">
+            <div>
+              <p className="eyebrow">WEEK {String(s.week).padStart(2, '0')} / {TOTAL_WEEKS}</p>
+              <h2>第{s.week}週 / {TOTAL_WEEKS}</h2>
+            </div>
+            <span className="chip type">{OSHI_MAP[s.oshi].name}{s.oshiMember ? `（メンバー${s.oshiMember}）` : ''}</span>
           </div>
-        ) : nextConcert ? (
-          <p className="muted">次の公演：第{nextConcert.week}週「{nextConcert.name}」（あと{nextConcert.week - s.week}週）。それまでにカードを集めてデッキを整えよう。</p>
-        ) : (
-          <p className="muted">すべての公演が終了しました。残りの週を好きに過ごして完走しよう。</p>
-        )}
+          {livePending && concert ? (
+            <div className="live-banner" data-testid="live-banner">
+              <span className="lb-tag"><Icon name="mic" /> LIVE WEEK</span>
+              <b>今週は「{concert.name}」開催週！</b>
+              <span>会場：{concert.venue}（{concert.city === s.city ? 'いまここ' : '別の都市'}）。参加はライブ画面から。</span>
+              <button type="button" className="btn pink" onClick={() => props.go('live')} data-testid="go-live"><Icon name="mic" /> ライブ画面へ</button>
+            </div>
+          ) : nextConcert ? (
+            <div className="ticket" data-testid="next-ticket">
+              <div className="ticket-main">
+                <span className="ticket-tag">NEXT LIVE</span>
+                <b>第{nextConcert.week}週「{nextConcert.name}」</b>
+                <small>それまでにカードを集めてデッキを整えよう。</small>
+              </div>
+              <div className="ticket-stub" aria-label={`次の公演まであと${nextConcert.week - s.week}週`}>
+                <small>あと</small><b>{nextConcert.week - s.week}</b><small>週</small>
+              </div>
+            </div>
+          ) : (
+            <p className="muted">すべての公演が終了しました。残りの週を好きに過ごして完走しよう。</p>
+          )}
+          <JourneyTrack s={s} />
+          <div className="passport" data-testid="passport" aria-label={`旅券スタンプ ${s.visitedCities.length}/${CITIES.length}`}>
+            <span className="passport-title"><Icon name="stamp" /> 旅券 {s.visitedCities.length}/{CITIES.length}</span>
+            <ul>
+              {CITIES.map((c, i) => (
+                <li key={c.id} className={s.visitedCities.includes(c.id) ? 'got' : ''} style={{ ['--rot' as string]: `${((i * 37) % 17) - 8}deg` }}>{c.name}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </section>
 
       <section className="panel">
-        <h2>今週の行動（残りAP {s.ap}）</h2>
-        <div className="actions">
-          <ActionButton label="仕事" sub={`2AP・+${yen(WORK_INCOME)}・体力-12`} tone="primary" testId="act-work"
-            reason={blockReason(s, { type: 'work' })} onClick={() => dispatch({ type: 'work' })} />
-          <ActionButton label="休息" sub="2AP・体力+30" testId="act-rest"
-            reason={blockReason(s, { type: 'rest' })} onClick={() => dispatch({ type: 'rest' })} />
-          <ActionButton label="マップで探索・移動" sub="探索1AP／移動1〜2AP" tone="pink" testId="act-map"
+        <h2><Icon name="bolt" /> 今週の行動（残りAP {s.ap}）</h2>
+        <div className="tiles">
+          <ActionTile tone="work" icon="work" label="仕事" hint="コツコツ稼ぐ" testId="act-work"
+            chips={[{ text: `${WORK_AP}AP`, icon: 'bolt' }, { text: `+${yen(WORK_INCOME)}`, icon: 'coin' }, { text: `体力-${WORK_STAMINA}`, icon: 'heart' }]}
+            reason={blockReason(s, { type: 'work' })} onClick={() => run({ type: 'work' })} />
+          <ActionTile tone="rest" icon="rest" label="休息" hint="体力を回復" testId="act-rest"
+            chips={[{ text: `${REST_AP}AP`, icon: 'bolt' }, { text: `体力+${REST_STAMINA}`, icon: 'heart' }]}
+            reason={blockReason(s, { type: 'rest' })} onClick={() => run({ type: 'rest' })} />
+          <ActionTile tone="travel" wide icon="ticket" label="マップで探索・移動" hint="旅に出る" testId="act-map"
+            chips={[{ text: '探索1AP', icon: 'bolt' }, { text: '移動1〜2AP', icon: 'rail' }]}
             reason={null} onClick={() => props.go('map')} />
         </div>
-        <h3>訓練（1AP・体力-6）：ライブの各メーター+5%/Lv</h3>
-        <div className="actions three">
+        <h3>訓練（{TRAIN_AP}AP・体力-{TRAIN_STAMINA}）：ライブの各メーター+5%/Lv</h3>
+        <div className="tiles train">
           {METERS.map((k: Meter) => (
-            <ActionButton key={k} label={`${METER_LABEL[k]} Lv${s.skills[k]}`}
-              sub={s.skills[k] >= TRAIN_MAX ? 'MAX' : yen(trainCost(s.skills[k]))} testId={`act-train-${k}`}
-              reason={blockReason(s, { type: 'train', skill: k })} onClick={() => dispatch({ type: 'train', skill: k })} />
+            <ActionTile key={k} tone={k} icon="train" label={`${METER_LABEL[k]} Lv${s.skills[k]}`} testId={`act-train-${k}`}
+              chips={[s.skills[k] >= TRAIN_MAX ? { text: 'MAX', icon: 'star' } : { text: yen(trainCost(s.skills[k])), icon: 'coin' }]}
+              reason={blockReason(s, { type: 'train', skill: k })} onClick={() => run({ type: 'train', skill: k })} />
           ))}
         </div>
       </section>
 
-      <section className="panel">
-        <button type="button" className="btn primary big" onClick={endWeek} data-testid="end-week">
+      <section className="panel end-panel">
+        <button type="button" className="btn primary big cta-end" onClick={endWeek} data-testid="end-week">
+          <Icon name="sparkle" />
           {s.week >= TOTAL_WEEKS ? '最終週を終える（結果へ）' : s.ap === 0 ? '週を終える（AP0）' : '週を終える'}
         </button>
         <p className="muted small">週末：資金+¥2,000（資産収入込み）、体力+10。APは4に戻ります。</p>

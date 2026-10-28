@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CITIES, MEMBERS, OSHI_TYPES, REGION_LABEL, type CityId, type MemberId, type NewGameOpts, type OshiType } from '../game';
 import { MEMBER_COLOR } from './common';
+import { Icon } from './icons';
 
 export function Setup(props: { onStart: (o: NewGameOpts) => void; notice: string | null; onDismissNotice: () => void }) {
   const [oshi, setOshi] = useState<OshiType>('solo');
@@ -15,7 +16,8 @@ export function Setup(props: { onStart: (o: NewGameOpts) => void; notice: string
         <div className="hero-beams" aria-hidden="true">
           <i /><i /><i />
         </div>
-        <p className="eyebrow">縦断プロトタイプ（ソロ＋CPU）</p>
+        <img className="hero-emblem" src="icons/icon.svg" alt="" width="64" height="64" />
+        <p className="eyebrow">推し活トラベル × カードライブ（ソロ＋CPU）</p>
         <h1>推し活<span>人生ゲーム</span></h1>
         <p className="lead">12週間、ファンとして推し活を重ね、3つの公演でCPUとライブ対決。移動・探索・カード収集・デッキ編成・ライブバトルが一続きで遊べます。</p>
       </section>
@@ -43,7 +45,7 @@ export function Setup(props: { onStart: (o: NewGameOpts) => void; notice: string
               <b>{t.name}</b>
               <em>{t.tagline}</em>
               <span>{t.passive}</span>
-              <small>💡 {t.strategy}</small>
+              <small><Icon name="sparkle" /> {t.strategy}</small>
             </button>
           ))}
         </div>

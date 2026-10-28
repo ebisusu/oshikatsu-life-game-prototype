@@ -1,6 +1,7 @@
 import { useEffect, useId } from 'react';
 import { yen } from '../game';
 import { Modal } from './common';
+import { Icon } from './icons';
 import type { WeekIntroData } from './weekTransition';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -49,7 +50,7 @@ export function WeekIntro({ data, onClose }: { data: WeekIntroData; onClose: () 
       <section className="wi-block" aria-label="今週の予定">
         <h3>今週の予定</h3>
         {data.thisWeek ? (
-          <p className="wi-event" data-testid="week-intro-event">🎤 今週は「{data.thisWeek.name}」開催週！<br /><small className="muted">会場：{data.thisWeek.venue}。参加はライブ画面から。</small></p>
+          <p className="wi-event" data-testid="week-intro-event"><Icon name="mic" /> 今週は「{data.thisWeek.name}」開催週！<br /><small className="muted">会場：{data.thisWeek.venue}。参加はライブ画面から。</small></p>
         ) : data.next ? (
           <p className="wi-event" data-testid="week-intro-event">今週は公演なし。次は第{data.next.week}週「{data.next.name}」（あと{data.next.weeksAway}週）。</p>
         ) : (

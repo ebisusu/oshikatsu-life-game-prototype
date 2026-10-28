@@ -4,6 +4,7 @@ import {
   type GameState, type Rarity,
 } from '../game';
 import { CardTile } from './common';
+import { Icon } from './icons';
 import type { Dispatch } from './useGame';
 
 export function Collection({ s, dispatch }: { s: GameState; dispatch: Dispatch }) {
@@ -75,8 +76,8 @@ export function DeckScreen({ s, dispatch }: { s: GameState; dispatch: Dispatch }
           <h2>デッキ編成 <span className={draft.length === DECK_SIZE ? 'ok-text' : 'ng-text'} data-testid="deck-count">{draft.length}/{DECK_SIZE}</span></h2>
           <span className="muted small deck-head-limits">SR {rc.SR}/6 ・ SSR {rc.SSR}/2 ・ UR {rc.UR}/1 ・ 同名{COPY_LIMIT}枚まで</span>
         </div>
-        {errors.length > 0 && <ul className="errors" data-testid="deck-errors">{errors.map((e) => <li key={e}>⚠ {e}</li>)}</ul>}
-        {errors.length === 0 && <p className="ok-text small">✓ 合法なデッキです{dirty ? '（未保存）' : '（保存済み）'}</p>}
+        {errors.length > 0 && <ul className="errors" data-testid="deck-errors">{errors.map((e) => <li key={e}><Icon name="lock" /> {e}</li>)}</ul>}
+        {errors.length === 0 && <p className="ok-text small"><Icon name="check" /> 合法なデッキです{dirty ? '（未保存）' : '（保存済み）'}</p>}
         <div className="row gap wrap">
           <button type="button" className="btn primary" disabled={!dirty || errors.length > 0} onClick={() => dispatch({ type: 'setDeck', deck: draft })} data-testid="deck-save">保存</button>
           <button type="button" className="btn plain" onClick={() => dispatch({ type: 'autoDeck' })} data-testid="deck-auto">自動調整</button>
@@ -88,7 +89,7 @@ export function DeckScreen({ s, dispatch }: { s: GameState; dispatch: Dispatch }
 
       <div className="minibar" data-testid="deck-minibar">
         <b className={draft.length === DECK_SIZE ? 'ok-text' : 'ng-text'}>{draft.length}/{DECK_SIZE}</b>
-        <span className="small">{errors.length ? '⚠ 違法' : dirty ? '未保存' : '保存済み'}</span>
+        <span className="small">{errors.length ? '違法な編成' : dirty ? '未保存' : '保存済み'}</span>
         <button type="button" className="btn primary small" disabled={!dirty || errors.length > 0} onClick={() => dispatch({ type: 'setDeck', deck: draft })}>保存</button>
       </div>
       <section className="panel">

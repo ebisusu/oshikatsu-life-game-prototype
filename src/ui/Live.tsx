@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   blockReason, CARD_MAP, CITY_MAP, CONCERTS, currentConcert, FIRST_HALF_EP, fmtTenths, HAND_LIMIT, liveCostFor,
   liveMoneyReward, LIVE_COST, METERS, METER_LABEL, playBlockReason, previewPlay, SONG_EP, SONG_TYPE_LABEL,
   sideTotalTenths, weightedTenths, yen, cpuMovesFirst, OSHI_MAP, KIND_LABEL,
-  type GameState, type LiveMode, type LiveSide, type LiveState,
+  type Action, type GameState, type LiveMode, type LiveSide, type LiveState,
 } from '../game';
 import { ActionButton, Bar, CardTile, GainLine } from './common';
+import { Icon } from './icons';
+import { MEMBER_COLOR } from './palette';
+import { liveFxFor, type LiveFx } from './liveFx';
 import type { Dispatch } from './useGame';
 
 const MODE_DESC: Record<LiveMode, string> = {
@@ -27,7 +30,7 @@ export function LiveScreen({ s, dispatch }: { s: GameState; dispatch: Dispatch }
 
       {pending && concert && (
         <section className="panel glow" data-testid="live-join">
-          <h2>🎤 {concert.name}（今週開催）</h2>
+          <h2><Icon name="mic" /> {concert.name}（今週開催）</h2>
           <p>会場：{concert.venue}（{CITY_MAP[concert.city].name}）／目標スコア {concert.target}</p>
           <p className="muted small">{concert.blurb}</p>
           <div className="modes">
@@ -63,36 +66,70 @@ export function LiveScreen({ s, dispatch }: { s: GameState; dispatch: Dispatch }
                 </div>
                 <p className="muted small">{c.venue}（{CITY_MAP[c.city].name}）／ 目標 {c.target} ／ {c.cpu.name}（{OSHI_MAP[c.cpu.oshi].name}）</p>
                 <p className="small">セットリスト：{c.setlist.map((x) => `${x.name}［${SONG_TYPE_LABEL[x.type]}］`).join(' → ')}</p>
-                {r?.status === 'done' && <p className="small">結果：あなた {fmtTenths(r.playerTotal ?? 0)} vs CPU {fmtTenths(r.cpuTotal ?? 0)}／{r.targetReached ? '🎯目標達成' : '目標未達'}／報酬 {yen(r.moneyReward ?? 0)}</p>}
+                {r?.status === 'done' && <p className="small">結果：あなた {fmtTenths(r.playerTotal ?? 0)} vs CPU {fmtTenths(r.cpuTotal ?? 0)}／{r.targetReached ? '目標達成' : '目標未達'}／報酬 {yen(r.moneyReward ?? 0)}</p>}
               </li>
             );
           })}
         </ul>
-        <p className="muted small">💡 セットリストの曲タイプに合うカード（曲マッチ+25%）を多く入れると有利です。</p>
+        <p className="muted small"><Icon name="sparkle" /> セットリストの曲タイプに合うカード（曲マッチ+25%）を多く入れると有利です。</p>
       </section>
     </div>
   );
 }
 
 // ---------- バトル画面 ----------
-function Stage({ live }: { live: LiveState }) {
+const LIGHTS = [26, 74, 122, 170, 218, 266, 314];
+const PENLIGHTS = Array.from({ length: 36 }, (_, i) => ({ x: 6 + i * 9.8 + (i % 2) * 3, row: i % 2, c: ['#4aa3ff', '#ff5fb7', '#a66bff', '#ffd36b'][i % 4]!, d: (i % 9) * 0.18 }));
+
+function Stage({ live, lead }: { live: LiveState; lead: 'you' | 'cpu' | 'tie' }) {
   const song = live.setlist[live.songIndex];
+  const youColor = live.player.oshiMember ? MEMBER_COLOR[live.player.oshiMember] : '#4aa3ff';
   return (
-    <div className="stage" aria-hidden="true">
-      <svg viewBox="0 0 360 120" preserveAspectRatio="none">
+    <div className={`stage lead-${lead}`} data-testid="stage">
+      <div className="stage-art">
+      <svg viewBox="0 0 360 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
         <defs>
-          <linearGradient id="b1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#4aa3ff" stopOpacity=".9" /><stop offset="1" stopColor="#4aa3ff" stopOpacity="0" /></linearGradient>
-          <linearGradient id="b2" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#ff5fb7" stopOpacity=".9" /><stop offset="1" stopColor="#ff5fb7" stopOpacity="0" /></linearGradient>
-          <linearGradient id="b3" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#a66bff" stopOpacity=".9" /><stop offset="1" stopColor="#a66bff" stopOpacity="0" /></linearGradient>
+          <linearGradient id="st-bg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#0a0622" /><stop offset="1" stopColor="#2a1670" /></linearGradient>
+          <linearGradient id="st-b1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#4aa3ff" stopOpacity=".9" /><stop offset="1" stopColor="#4aa3ff" stopOpacity="0" /></linearGradient>
+          <linearGradient id="st-b2" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#ff5fb7" stopOpacity=".9" /><stop offset="1" stopColor="#ff5fb7" stopOpacity="0" /></linearGradient>
+          <linearGradient id="st-b3" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#a66bff" stopOpacity=".9" /><stop offset="1" stopColor="#a66bff" stopOpacity="0" /></linearGradient>
         </defs>
-        <polygon className="beam beam1" points="60,0 90,0 150,120 0,120" fill="url(#b1)" />
-        <polygon className="beam beam2" points="165,0 195,0 260,120 100,120" fill="url(#b2)" />
-        <polygon className="beam beam3" points="270,0 300,0 360,120 210,120" fill="url(#b3)" />
-        <rect x="0" y="104" width="360" height="16" fill="#120b33" />
-        <g className="crowd">{Array.from({ length: 24 }).map((_, i) => (
-          <circle key={i} cx={8 + i * 15} cy={112 + (i % 3)} r="3.2" fill={['#4aa3ff', '#ff5fb7', '#a66bff'][i % 3]} className={`pl pl${i % 4}`} />
-        ))}</g>
+        <rect width="360" height="150" fill="url(#st-bg)" />
+        <g className="beams">
+          <polygon className="beam beam1" points="40,8 62,8 150,118 20,118" fill="url(#st-b1)" />
+          <polygon className="beam beam2" points="150,8 172,8 250,118 100,118" fill="url(#st-b2)" />
+          <polygon className="beam beam3" points="256,8 278,8 350,118 196,118" fill="url(#st-b3)" />
+        </g>
+        <rect x="8" y="4" width="344" height="6" rx="3" fill="#1a1050" stroke="#6a60a8" strokeWidth=".8" />
+        {LIGHTS.map((x, i) => <circle key={x} className="lamp" cx={x} cy="7" r="3.2" fill={['#4aa3ff', '#ff5fb7', '#a66bff'][i % 3]} style={{ animationDelay: `${i * 0.2}s` }} />)}
+        <rect x="122" y="22" width="116" height="40" rx="5" fill="#07041a" stroke="#4aa3ff" strokeOpacity=".7" />
+        <rect x="126" y="26" width="108" height="32" rx="3" fill="#150d3d" className="led" />
+        <g className="eq" fill="#4aa3ff">{Array.from({ length: 12 }, (_, i) => <rect key={i} className="eq-bar" x={131 + i * 8.6} y="30" width="5" height="24" rx="1.5" style={{ animationDelay: `${(i % 5) * 0.13}s` }} />)}</g>
+        <path d="M0 108h360v14H0z" fill="#1a1050" />
+        <path d="M0 108h360" stroke="#ff5fb7" strokeOpacity=".7" strokeWidth="1.2" />
+        {([[70, youColor], [104, youColor], [256, '#ff5fb7'], [290, '#ff8ad8']] as const).map(([x, c], i) => (
+          <g key={i} className={`dancer d${i}`} transform={`translate(${x} 0)`}>
+            <circle cx="0" cy="82" r="5" fill="#0a0622" stroke={c} strokeWidth="1.6" />
+            <path d="M-7 108 L-5 90 Q0 86 5 90 L7 108Z" fill="#0a0622" stroke={c} strokeWidth="1.6" />
+          </g>
+        ))}
+        <rect y="124" width="360" height="26" fill="#0d0830" />
+        {PENLIGHTS.map((p, i) => (
+          <g key={i} transform={`translate(${p.x} ${p.row ? 140 : 131})`}>
+            <g className="penlight" style={{ animationDelay: `${p.d}s` }}>
+              <rect x="-1.2" y="-12" width="2.4" height="12" rx="1.2" fill={p.c} />
+              <rect x="-2.6" y="-14" width="5.2" height="5" rx="2" fill={p.c} opacity=".5" />
+            </g>
+            <circle cy="3" r="4.2" fill="#07041a" />
+          </g>
+        ))}
       </svg>
+      <div className="stage-vs" aria-hidden="true">
+        <span className="you"><small>あなた</small><b>{fmtTenths(weightedTenths(live.player.song))}</b></span>
+        <span className="vs-badge">VS</span>
+        <span className="cpu"><small>CPU</small><b>{fmtTenths(weightedTenths(live.cpu.song))}</b></span>
+      </div>
+      </div>
       <div className="stage-text">
         <small>第{live.songIndex + 1}曲 / {live.setlist.length}</small>
         <b>♪ {song?.name}</b>
@@ -102,12 +139,26 @@ function Stage({ live }: { live: LiveState }) {
   );
 }
 
+function SongTrack({ live }: { live: LiveState }) {
+  return (
+    <ol className="songtrack" aria-label="セットリスト進行">
+      {live.setlist.map((x, i) => (
+        <li key={x.id} className={i < live.songIndex ? 'done' : i === live.songIndex ? 'now' : ''} aria-current={i === live.songIndex ? 'step' : undefined}>
+          <Icon name={i < live.songIndex ? 'check' : 'note'} /><span>{i + 1}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function ScoreRow({ label, side, live, you }: { label: string; side: LiveSide; live: LiveState; you?: boolean }) {
   const songNow = weightedTenths(side.song);
+  const foe = you ? live.cpu : live.player;
+  const leading = songNow > weightedTenths(foe.song);
   return (
-    <div className={`score-row${you ? ' you' : ''}`} data-testid={you ? 'score-player' : 'score-cpu'}>
+    <div className={`score-row${you ? ' you' : ' foe'}${leading ? ' leading' : ''}`} data-testid={you ? 'score-player' : 'score-cpu'}>
       <div className="score-head">
-        <b>{label}</b>
+        <b>{leading && <Icon name="star" className="crown" />}{label}</b>
         <span className="total">合計 <em>{fmtTenths(sideTotalTenths(side))}</em></span>
         <span className="song-now">この曲 {fmtTenths(songNow)}</span>
         <span className="small muted">MVP {side.mvpWins}</span>
@@ -145,7 +196,28 @@ function EpGauge({ live }: { live: LiveState }) {
 function Battle({ s, live, dispatch }: { s: GameState; live: LiveState; dispatch: Dispatch }) {
   const [sel, setSel] = useState<number | null>(null);
   const [logOpen, setLogOpen] = useState(false);
+  const [fx, setFx] = useState<{ id: number; data: LiveFx } | null>(null);
+  const armed = useRef<LiveState | null>(null);
+  const fxTimer = useRef<number | undefined>(undefined);
   useEffect(() => { setSel(null); }, [live.songIndex, live.phase, live.stage]);
+  useEffect(() => () => window.clearTimeout(fxTimer.current), []);
+  // 演出は「このタブでの操作が成功した直後」だけ、操作前後の実状態の差分から作る（リロード・別タブ同期・失敗では出ない）
+  useEffect(() => {
+    const before = armed.current;
+    if (!before || before === live) return;
+    armed.current = null;
+    const data = liveFxFor(before, live);
+    if (!data) return;
+    setFx({ id: Date.now(), data });
+    window.clearTimeout(fxTimer.current);
+    fxTimer.current = window.setTimeout(() => setFx(null), 2800);
+  }, [live]);
+  const act = (a: Action): boolean => {
+    const before = live;
+    const ok = dispatch(a);
+    if (ok) armed.current = before;
+    return ok;
+  };
 
   if (live.stage === 'result' && live.result) return <LiveResultView s={s} live={live} dispatch={dispatch} />;
 
@@ -153,16 +225,21 @@ function Battle({ s, live, dispatch }: { s: GameState; live: LiveState; dispatch
   const selId = sel !== null ? p.hand[sel] : undefined;
   const selPv = selId ? previewPlay(live, 'player', selId) : null;
   const selReason = selId ? playBlockReason(live, 'player', selId) : null;
+  const youNow = weightedTenths(p.song);
+  const cpuNow = weightedTenths(live.cpu.song);
+  const lead: 'you' | 'cpu' | 'tie' = youNow > cpuNow ? 'you' : cpuNow > youNow ? 'cpu' : 'tie';
   const songPlays = p.history.filter((r) => r.songIndex === live.songIndex);
   const last = songPlays[songPlays.length - 1];
   const play = () => {
     if (sel === null) return;
-    if (dispatch({ type: 'livePlay', handIndex: sel })) setSel(null);
+    if (act({ type: 'livePlay', handIndex: sel })) setSel(null);
   };
 
   return (
     <div className="screen battle" data-testid="battle">
-      <Stage live={live} />
+      <LiveFxView fx={fx} />
+      <Stage live={live} lead={lead} />
+      <SongTrack live={live} />
       <div className="phase-bar">
         <span className={`phase-pill ${live.phase}`} data-testid="phase-pill">{live.phase === 'first' ? '前半（上限2EP）' : '後半（残りEP）'}</span>
         <span className="small muted">{cpuMovesFirst(live.songIndex) ? 'この曲はCPU先攻' : 'この曲はあなた先攻'}／ 目標 {live.target}</span>
@@ -174,7 +251,7 @@ function Battle({ s, live, dispatch }: { s: GameState; live: LiveState; dispatch
       </div>
 
       <div className="combo-state" data-testid="combo-state">
-        <b>🔗 コンボ状況</b>
+        <b><Icon name="link" /> コンボ状況</b>
         <span>この曲の使用：{songPlays.length ? songPlays.map((r) => CARD_MAP[r.cardId]?.name).join(' → ') : 'まだなし'}</span>
         <span className="small muted">直前：{last ? `${CARD_MAP[last.cardId]?.name}（メンバー${last.member}・${KIND_LABEL[last.kind]}・${SONG_TYPE_LABEL[last.songType]}）` : 'なし'}／この公演のコンボ発動 {p.comboFired}回{p.songBuffPct ? `／曲バフ+${p.songBuffPct}%` : ''}{p.nextMult !== 1 ? `／次のカード×${p.nextMult}` : ''}</span>
       </div>
@@ -193,7 +270,7 @@ function Battle({ s, live, dispatch }: { s: GameState; live: LiveState; dispatch
           const reason = playBlockReason(live, 'player', id);
           const pv = previewPlay(live, 'player', id);
           return (
-            <CardTile key={`${id}-${i}`} card={card} selected={sel === i} reason={reason} gains={pv.gains}
+            <CardTile key={`${id}-${i}`} card={card} selected={sel === i} reason={reason} gains={pv.gains} ready={!reason}
               comboText={pv.comboText} comboOk={pv.comboFired} testId={`hand-${i}`} onClick={() => setSel(sel === i ? null : i)} />
           );
         })}
@@ -203,14 +280,14 @@ function Battle({ s, live, dispatch }: { s: GameState; live: LiveState; dispatch
         {selPv && selId && (
           <div className="sel-info" data-testid="sel-info">
             <span><b>「{CARD_MAP[selId]?.name}」</b> <GainLine g={selPv.gains} />（{fmtTenths(weightedTenths(selPv.gains))}点）</span>
-            {selReason && <small className="ng-text">🚫 {selReason}</small>}
+            {selReason && <small className="ng-text"><Icon name="lock" /> {selReason}</small>}
           </div>
         )}
         <div className="row gap">
           <button type="button" className="btn pink" onClick={play} disabled={sel === null || !!selReason} data-testid="play-card">
             {sel === null ? 'カードを選ぶ' : selReason ? '使えません' : 'このカードを使う'}
           </button>
-          <button type="button" className="btn primary" onClick={() => dispatch({ type: 'liveEndPhase' })} data-testid="end-phase">
+          <button type="button" className="btn primary" onClick={() => act({ type: 'liveEndPhase' })} data-testid="end-phase">
             {live.phase === 'first' ? '前半を終える' : live.songIndex === live.setlist.length - 1 ? '最終曲を締める' : '後半を終えて次の曲へ'}
           </button>
         </div>
@@ -226,6 +303,35 @@ function Battle({ s, live, dispatch }: { s: GameState; live: LiveState; dispatch
   );
 }
 
+function LiveFxView({ fx }: { fx: { id: number; data: LiveFx } | null }) {
+  const d = fx?.data;
+  return (
+    <div className="live-fx" role="status" aria-live="polite" data-testid="live-fx-layer">
+      {fx && d && (
+        <div key={fx.id} className="live-fx-stack" data-testid="live-fx">
+          {d.play && (
+            <div className={`fx-play rar-${d.play.rarity}${d.play.combo ? ' is-combo' : ''}`} data-testid="live-fx-play">
+              <span className="fx-card">{d.play.card}</span>
+              <b className="fx-score">+{fmtTenths(d.play.delta)}<small>点</small></b>
+              <span className="fx-gains">熱量+{d.play.gains.h} 一体感+{d.play.gains.u} 思い出+{d.play.gains.m}</span>
+              {d.play.combo && <span className="fx-combo" data-testid="combo-burst"><Icon name="link" /> {d.play.combo}</span>}
+              {!d.play.combo && d.play.comboMiss && <span className="fx-miss">{d.play.comboMiss}</span>}
+            </div>
+          )}
+          {d.cpu && (
+            <div className="fx-cpu" data-testid="live-fx-cpu">
+              <span className="fx-who">CPU</span>
+              <span>{d.cpu.cards.map((c) => `「${c.name}」`).join('')}を使用{d.cpu.delta !== null ? `（+${fmtTenths(d.cpu.delta)}点）` : ''}</span>
+            </div>
+          )}
+          {d.song && <div className="fx-song" data-testid="live-fx-song">{d.song}</div>}
+          {d.advance && <div className="fx-advance" data-testid="live-fx-advance">{d.advance}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LiveResultView({ s, live, dispatch }: { s: GameState; live: LiveState; dispatch: Dispatch }) {
   const r = live.result!;
   const idx = CONCERTS.findIndex((c) => c.id === live.concertId);
@@ -235,6 +341,7 @@ function LiveResultView({ s, live, dispatch }: { s: GameState; live: LiveState; 
   return (
     <div className="screen" data-testid="live-result">
       <section className={`panel result ${r.winner}`}>
+        {r.winner === 'player' && <div className="confetti" aria-hidden="true">{Array.from({ length: 18 }, (_, i) => <i key={i} style={{ left: `${(i * 37) % 100}%`, animationDelay: `${(i % 6) * 0.12}s`, background: ['#ff5fb7', '#4aa3ff', '#ffd36b', '#a66bff'][i % 4] }} />)}</div>}
         <p className="eyebrow">{CONCERTS[idx]?.name} 終演</p>
         <h2 data-testid="live-verdict">{r.winner === 'player' ? '勝利！' : r.winner === 'draw' ? '引き分け' : '惜敗…'}</h2>
         <div className="vs">
@@ -242,7 +349,7 @@ function LiveResultView({ s, live, dispatch }: { s: GameState; live: LiveState; 
           <span>VS</span>
           <div><small>CPU</small><b>{fmtTenths(r.cpuTotal)}</b></div>
         </div>
-        <p>{r.targetReached ? `🎯 目標スコア ${r.target} 達成！` : `目標スコア ${r.target} には届きませんでした。`}</p>
+        <p className="target-line">{r.targetReached ? <><Icon name="star" /> 目標スコア {r.target} 達成！</> : `目標スコア ${r.target} には届きませんでした。`}</p>
         <table className="songs">
           <thead><tr><th>曲</th><th>あなた</th><th>CPU</th><th>MVP</th></tr></thead>
           <tbody>

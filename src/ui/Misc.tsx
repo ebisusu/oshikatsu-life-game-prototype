@@ -3,6 +3,8 @@ import {
   CARD_MAP, COPY_LIMIT, DECK_SIZE, OSHI_TYPES, TROPHIES, getCard, type GameState, SONG_METER_MOD, METERS, METER_LABEL,
 } from '../game';
 import { Bar, CardTile, Modal } from './common';
+import { Icon } from './icons';
+import { Medal } from './art';
 import type { Dispatch } from './useGame';
 import { buildFeedback, copyText } from './feedback';
 
@@ -18,7 +20,7 @@ export function ChoiceModal({ s, dispatch }: { s: GameState; dispatch: Dispatch 
           const n = s.collection[id] ?? 0;
           return (
             <CardTile key={id} card={c} owned={n} testId="choice-card" onClick={() => dispatch({ type: 'pickCard', cardId: id })}
-              extra={<div className="pick-hint">{n === 0 ? '✨ 新規カード' : n >= COPY_LIMIT ? '（すでに2枚以上所持）' : `（${n}枚所持）`} タップで獲得</div>} />
+              extra={<div className="pick-hint">{n === 0 ? 'NEW 新規カード' : n >= COPY_LIMIT ? '（すでに2枚以上所持）' : `（${n}枚所持）`} タップで獲得</div>} />
           );
         })}
       </div>
@@ -30,22 +32,27 @@ export function Trophies({ s }: { s: GameState }) {
   const got = s.trophies.length;
   const total = TROPHIES.filter((t) => !t.locked).length;
   return (
-    <div className="screen">
-      <section className="panel">
-        <h2>トロフィー <small className="muted" data-testid="trophy-count">{got}/{total}</small></h2>
+    <div className="screen trophy-screen">
+      <section className="panel trophy-head">
+        <div className="row between">
+          <h2><Icon name="trophy" /> トロフィー棚 <small className="muted" data-testid="trophy-count">{got}/{total}</small></h2>
+          <span className="chip">{got >= total ? 'COMPLETE' : `あと${total - got}個`}</span>
+        </div>
+        <Bar value={got} max={total} cls="b-m" />
         <p className="muted small">達成すると自動で獲得。最終リザルトのスコアに反映されます。</p>
       </section>
-      <ul className="trophies">
-        {TROPHIES.map((t) => {
+      <ul className="trophies shelf">
+        {TROPHIES.map((t, i) => {
           const on = s.trophies.includes(t.id);
           const pr = t.progress?.(s);
           return (
             <li key={t.id} className={`trophy${on ? ' on' : ''}${t.locked ? ' locked' : ''}`} data-testid={`trophy-${t.id}`}>
-              <span className="t-icon" aria-hidden="true">{t.locked ? '🔒' : on ? '🏆' : '▫️'}</span>
-              <div>
+              <Medal on={on} locked={t.locked} tier={i} />
+              <div className="trophy-body">
                 <b>{t.name}</b>
                 <p className="muted small">{t.desc}</p>
                 {pr && !t.locked && <><Bar value={pr.cur} max={pr.max} cls="b-m" /><small className="muted">{on ? '達成' : `${pr.cur}/${pr.max}`}</small></>}
+                {t.locked && <small className="muted">構想（試作版では未解放）</small>}
               </div>
             </li>
           );

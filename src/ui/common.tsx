@@ -1,12 +1,13 @@
 ﻿import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { MEMBER_COLOR } from './palette';
+import { CardArt } from './art';
+import { Icon, type IconName } from './icons';
 import {
   describeEffect, KIND_LABEL, METERS, METER_LABEL, REGION_LABEL, SONG_TYPE_LABEL,
   type CardDef, type Gain3, type MemberId,
 } from '../game';
 
-export const MEMBER_COLOR: Record<MemberId, string> = {
-  A: '#4aa3ff', B: '#ff5fb7', C: '#a66bff', D: '#36d6e7', E: '#ff8ad8', F: '#ffc857', G: '#6be28f', H: '#ff7a7a',
-};
+export { MEMBER_COLOR };
 
 export function MemberChip({ m }: { m: MemberId }) {
   return (
@@ -42,12 +43,15 @@ export interface CardTileProps {
   testId?: string;
   extra?: ReactNode;
   dim?: boolean;
+  /** 今使える（ライブの手札用）。縁が光る */
+  ready?: boolean;
 }
 
 export function CardTile(p: CardTileProps) {
   const { card } = p;
   const body = (
     <>
+      <CardArt card={card} />
       <div className="card-top">
         <span className={`rar rar-${card.rarity}`}>{card.rarity}</span>
         <span className="card-name">{card.name}</span>
@@ -76,20 +80,20 @@ export function CardTile(p: CardTileProps) {
           {p.isNew && <span className="badge-new">NEW</span>}
         </div>
       )}
-      {p.reason && <div className="card-reason">🚫 {p.reason}</div>}
+      {p.reason && <div className="card-reason"><Icon name="lock" /> {p.reason}</div>}
       {p.extra}
     </>
   );
-  const cls = `card rar-bg-${card.rarity}${p.selected ? ' selected' : ''}${p.reason ? ' blocked' : ''}${p.dim ? ' dim' : ''}`;
+  const cls = `card rar-bg-${card.rarity}${p.selected ? ' selected' : ''}${p.reason ? ' blocked' : ''}${p.dim ? ' dim' : ''}${p.ready ? ' ready' : ''}`;
   if (p.onClick) {
     return (
-      <button type="button" className={cls} onClick={p.onClick} data-testid={p.testId} aria-pressed={p.selected}>
+      <button type="button" className={cls} onClick={p.onClick} data-testid={p.testId} data-rarity={card.rarity} aria-pressed={p.selected}>
         {body}
       </button>
     );
   }
   return (
-    <div className={cls} data-testid={p.testId}>
+    <div className={cls} data-testid={p.testId} data-rarity={card.rarity}>
       {body}
     </div>
   );
@@ -166,3 +170,35 @@ export function ActionButton(props: {
   );
 }
 
+
+export interface TileChip { text: string; icon?: IconName }
+
+/** イラスト調の選択タイル（仕事/休息/訓練/旅）。disabled と理由表示は ActionButton と同じ。 */
+export function ActionTile(props: {
+  icon: IconName;
+  label: string;
+  chips: TileChip[];
+  reason: string | null;
+  onClick: () => void;
+  testId?: string;
+  tone: 'work' | 'rest' | 'travel' | 'h' | 'u' | 'm';
+  hint?: string;
+  /** 1行まるごと使う（グリッドの全幅） */
+  wide?: boolean;
+}) {
+  return (
+    <div className={`tile-wrap${props.wide ? ' wide' : ''}`}>
+      <button type="button" className={`tile tone-${props.tone}`} onClick={props.onClick} disabled={!!props.reason} data-testid={props.testId}>
+        <span className="tile-art" aria-hidden="true"><Icon name={props.icon} /></span>
+        <span className="tile-body">
+          <b className="tile-label">{props.label}</b>
+          {props.hint && <span className="tile-hint">{props.hint}</span>}
+          <span className="tile-chips">
+            {props.chips.map((c) => <span key={c.text} className="tile-chip">{c.icon && <Icon name={c.icon} />}{c.text}</span>)}
+          </span>
+        </span>
+      </button>
+      {props.reason && <p className="reason">{props.reason}</p>}
+    </div>
+  );
+}

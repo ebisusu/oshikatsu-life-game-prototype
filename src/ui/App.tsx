@@ -9,16 +9,17 @@ import { Setup } from './Setup';
 import { useGame } from './useGame';
 import { Bar } from './common';
 import { WeekIntro } from './WeekIntro';
+import { Icon, type IconName } from './icons';
 
 export type Tab = 'home' | 'map' | 'collection' | 'deck' | 'live' | 'trophy' | 'help';
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'home', label: 'ホーム', icon: '🏠' },
-  { id: 'map', label: 'マップ', icon: '🗾' },
-  { id: 'collection', label: '収集', icon: '🃏' },
-  { id: 'deck', label: 'デッキ', icon: '🎴' },
-  { id: 'live', label: 'ライブ', icon: '🎤' },
-  { id: 'trophy', label: '実績', icon: '🏆' },
-  { id: 'help', label: 'ヘルプ', icon: '❓' },
+const TABS: { id: Tab; label: string; icon: IconName }[] = [
+  { id: 'home', label: 'ホーム', icon: 'home' },
+  { id: 'map', label: 'マップ', icon: 'map' },
+  { id: 'collection', label: '収集', icon: 'cards' },
+  { id: 'deck', label: 'デッキ', icon: 'deck' },
+  { id: 'live', label: 'ライブ', icon: 'mic' },
+  { id: 'trophy', label: '実績', icon: 'trophy' },
+  { id: 'help', label: 'ヘルプ', icon: 'help' },
 ];
 
 const TUTORIAL_KEY = 'oshikatsu-jinsei-game:tutorial-seen';
@@ -31,6 +32,9 @@ export function App() {
   const tabsRef = useRef<HTMLElement>(null);
   const [tab, setTab] = useState<Tab>('home');
   const [tutorial, setTutorial] = useState(false);
+
+  // タブを切り替えたら先頭から見せる（前のタブのスクロール位置を引き継がない）
+  useEffect(() => { window.scrollTo(0, 0); }, [tab]);
 
   // ライブ開始時は自動でライブ画面へ
   const liveActive = !!s?.live;
@@ -80,7 +84,7 @@ export function App() {
           <span className="st-hp">体力 <b data-testid="st-stamina">{s.stamina}</b>/{MAX_STAMINA}</span>
           <Bar value={s.stamina} max={MAX_STAMINA} cls={s.stamina < 30 ? 'b-low' : 'b-hp'} />
           <span className="st-type">{OSHI_MAP[s.oshi].name}{s.oshiMember ? `・${s.oshiMember}` : ''}</span>
-          <span className="st-city">📍{CITY_MAP[s.city].name}</span>
+          <span className="st-city"><Icon name="pin" />{CITY_MAP[s.city].name}</span>
         </div>
       </header>
 
@@ -98,7 +102,7 @@ export function App() {
         {TABS.map((t) => (
           <button key={t.id} type="button" className={`tab${tab === t.id ? ' on' : ''}`} onClick={() => setTab(t.id)}
             aria-current={tab === t.id ? 'page' : undefined} data-testid={`tab-${t.id}`}>
-            <span aria-hidden="true">{t.icon}</span>
+            <span className="tab-ico" aria-hidden="true"><Icon name={t.icon} /></span>
             <small>{t.label}</small>
             {t.id === 'live' && (livePending || liveActive) && <i className="dot-alert" aria-label="ライブあり" />}
             {t.id === 'deck' && s.newCards.length > 0 && <i className="dot-alert" aria-label="新規カードあり" />}
